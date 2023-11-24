@@ -1,35 +1,41 @@
 const express = require ("express");
 const app = express();
-var counterArray = {};
+const routes = require("./routes/routes");
+const logger = require("./helpers/logger");
 
-app.listen(3000, (_, res) => {
+let server;
+
+server = app.listen(process.env.port || 3000, (req, res) => {
+    logger.info("Server connected successfully");
     console.log("Server connected successfully");
-  } )
-
-app.get("/test", (req,res) => {
-  return res.send ({count : counterFunction ("test")});
 })
 
-app.get("/:name", (req,res) => {
-  let name = req.params.name;
-  return res.send({count : counterFunction (name)})
-})
-
-const counterFunction = (endpointName) => {
-  if(counterArray[endpointName] != null) {
-     counterArray[endpointName] += 1;
-     return counterArray[endpointName]
+const exitHandler = () => {
+  if (server) {
+    server.close(() => {
+      logger.info("Server closed");
+      process.exit(1);
+    });
   } else {
-      //let tempObj =  { `${endpointName}` : 1}
-      //counterArray = Object.assign(counterArray, tempObj)
-      counterArray [endpointName] = 1;
-      return counterArray[endpointName];
-    }
-}
+    process.exit(1);
+  }
+};
 
-//login
-//registration
-//token
-//use token to reset endpoint count
-//handle error and send responses
-//rendom dont need to be authenticated
+const unexpectedErrorHandler = (error) => {
+  logger.error(error);
+  exitHandler();
+};
+
+process.on('uncaughtException', unexpectedErrorHandler);
+process.on('unhandledRejection', unexpectedErrorHandler);
+
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received');
+  if (server) {
+    server.close();
+  }
+});
+
+app.use("/",  routes);
+
+
